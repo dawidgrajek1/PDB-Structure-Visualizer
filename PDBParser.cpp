@@ -41,6 +41,8 @@ std::vector<Atom> PDBParser::parsePDBFile(std::string pdbFile)
 				tmpAtom.setTempFactor(std::stof(line.substr(60, 6)));
 				tmpAtom.setElement(line.substr(76, 2));
 				tmpAtom.setCharge(line.substr(78, 2));
+				tmpAtom.setVdwRadius();
+				tmpAtom.setPosition();
 				atoms.push_back(tmpAtom);
 			}
 			else if (line.substr(0, 3) == "TER")

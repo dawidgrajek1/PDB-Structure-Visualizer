@@ -34,6 +34,7 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "PDBParser.h"
 #include <iostream>
 #include <map>
+#include "Bond.h"
 
 float speed_x = 0;
 float speed_y = 0;
@@ -43,8 +44,10 @@ float aspectRatio = 1;
 
 ShaderProgram* sp;
 Models::Sphere* sphere;
+Models::Sphere* stick;
 PDBParser* parser;
 std::vector<Atom> atoms;
+std::vector<Bond> bonds;
 
 //Procedura obsługi błędów
 void error_callback(int error, const char* description) {
@@ -76,6 +79,21 @@ void windowResizeCallback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
+std::vector<Bond> calculateBonds(std::vector<Atom> atoms) {
+	std::vector<Bond> bonds;
+	for (int i = 0; i < atoms.size(); i++) {
+		for (int j = i + 1; j < atoms.size(); j++) {
+			glm::vec4 atom1 = glm::vec4(atoms[i].getX(), atoms[i].getY(), atoms[i].getZ(), 1.0f);
+			glm::vec4 atom2 = glm::vec4(atoms[j].getX(), atoms[j].getY(), atoms[j].getZ(), 1.0f);
+			float distance = glm::distance(atom1, atom2);
+			if (distance < atoms[i].getVdwRadius() + atoms[j].getVdwRadius()) {
+				bonds.push_back(Bond(glm::vec4(atoms[i].getX(), atoms[i].getY(), atoms[i].getZ(), 1.0f), glm::vec4(atoms[j].getX(), atoms[j].getY(), atoms[j].getZ(), 1.0f)));
+			}
+		}
+	}
+	return bonds;
+}
+
 //Procedura inicjująca
 void initOpenGLProgram(GLFWwindow* window) {
 	glClearColor(0, 0, 0, 1);
@@ -84,13 +102,17 @@ void initOpenGLProgram(GLFWwindow* window) {
 	glfwSetKeyCallback(window, keyCallback);
 
 	sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
-	sphere = new Models::Sphere(0.5f, 20, 20);
+	sphere = new Models::Sphere(0.4f, 20, 20);
+	stick = new Models::Sphere(0.1f, 20, 20);
 	parser = new PDBParser();
 	atoms = parser->parsePDBFile(".\\examples\\simple.pdb");
 	std::cout << "Atoms loaded: " << atoms.size() << std::endl;
+	bonds = calculateBonds(atoms);
+	std::cout << "Bonds calculated: " << bonds.size() << std::endl;
 	/*for (int i = 0; i < atoms.size(); i++) {
 		std::cout << atoms[i].getSerial() << " " << atoms[i].getName() << " " << atoms[i].getResName() << " " << " " << atoms[i].getX() << " " << atoms[i].getY() << " " << atoms[i].getZ() << " _" << atoms[i].getElement() << "_" << std::endl;
 	}*/
+
 }
 
 
@@ -144,6 +166,25 @@ void drawAtom(Atom atom, float angle_x, float angle_y, bool drawForcesRadius, bo
 	glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
 }
 
+void drawBond(Bond bond, float angle_x, float angle_y) {
+	glm::mat4 M = glm::mat4(1.0f);
+	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
+	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
+	M = glm::scale(M, bond.getDirection().xyz * bond.getLength());
+	M = glm::translate(M, glm::vec3(bond.getCenter().x, bond.getCenter().y, bond.getCenter().z));
+
+	glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+	//Przeslij parametry programu cieniującego do karty graficznej
+	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+	glUniform4f(sp->u("color"), color.x, color.y, color.z, color.w);
+
+	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, stick->vertices); //Wskaż tablicę z danymi dla atrybutu vertex
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, stick->vertexNormals); //Wskaż tablicę z danymi dla atrybutu vertex
+
+	glDrawArrays(GL_TRIANGLES, 0, stick->vertexCount); //Narysuj obiekt
+}
+
 
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
@@ -154,7 +195,7 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 		glm::vec3(0, 0, zoom),
 		glm::vec3(0, 0, 0),
 		glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz widoku
-	glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 0.01f, 50.0f); //Wylicz macierz rzutowania
+	glm::mat4 P = glm::perspective(75.0f * PI / 180.0f, aspectRatio, 0.01f, 100.0f); //Wylicz macierz rzutowania
 
 	//glm::mat4 M = glm::mat4(1.0f);
 	//M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
@@ -178,6 +219,13 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 		drawAtom(atoms[i], angle_x, angle_y, false, false);
 	}
 
+	//Rysowanie wiązań
+	for (int i = 0; i < bonds.size(); i++)
+	{
+		std::cout << bonds[i].getStart().x << " " << bonds[i].getLength() << std::endl;
+		drawBond(bonds[i], angle_x, angle_y);
+	}
+
 	glDisableVertexAttribArray(sp->a("vertex"));  //Wyłącz przesyłanie danych do atrybutu vertex
 	glDisableVertexAttribArray(sp->a("normal"));  //Wyłącz przesyłanie danych do atrybutu vertex
 
@@ -196,7 +244,7 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 
-	window = glfwCreateWindow(500, 500, "OpenGL", NULL, NULL);  //Utwórz okno 500x500 o tytule "OpenGL" i kontekst OpenGL.
+	window = glfwCreateWindow(800, 800, "PDB Structure Visualizer", NULL, NULL);  //Utwórz okno 500x500 o tytule "OpenGL" i kontekst OpenGL.
 
 	if (!window) //Jeżeli okna nie udało się utworzyć, to zamknij program
 	{

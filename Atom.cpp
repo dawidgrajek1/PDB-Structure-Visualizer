@@ -72,6 +72,11 @@ std::string Atom::getCharge()
 	return charge;
 }
 
+glm::vec4 Atom::getPosition()
+{
+	return this->position;
+}
+
 float Atom::getVdwRadius()
 {
 	return vdwRadius;
@@ -149,23 +154,28 @@ void Atom::setCharge(std::string charge)
 
 void Atom::setVdwRadius()
 {
-	std::map<std::string, float> vdwRadii;
-	vdwRadii["H"] = 1.20f;
-	vdwRadii["N"] = 1.55f;
-	vdwRadii["C"] = 1.70f;
-	vdwRadii["O"] = 1.52f;
-	vdwRadii["S"] = 1.80f;
-	vdwRadii["P"] = 1.80f;
-	vdwRadii["F"] = 1.47f;
+	std::map<std::string, float> vdwRadii = {
+		{ " H", 1.20f },
+		{ " N", 1.55f },
+		{ " C", 1.70f },
+		{ " O", 1.52f },
+		{ " S", 1.80f },
+		{ " P", 1.80f },
+		{ " F", 1.47f }
+	};
 
 	if (vdwRadii.find(element) == vdwRadii.end())
 	{
 		this->vdwRadius = 0.0;
+		return;
 	}
-	else
-	{
-		this->vdwRadius = vdwRadii[element];
-	}
+	this->vdwRadius = vdwRadii[this->element];
+	return;
+}
+
+void Atom::setPosition()
+{
+	this->position = glm::vec4(this->x, this->y, this->z, 1.0f);
 }
 
 Atom::Atom()
@@ -183,6 +193,7 @@ Atom::Atom()
 	this->element = "";
 	this->charge = "";
 	this->vdwRadius = 0.0;
+	this->position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 Atom::Atom(	int serial, std::string name, char altLoc, std::string resName, char chainID, int resSeq, char iCode,
@@ -203,6 +214,7 @@ Atom::Atom(	int serial, std::string name, char altLoc, std::string resName, char
 	this->element = element;
 	this->charge = charge;
 	this->setVdwRadius();
+	this->setPosition();
 }
 
 Atom::~Atom()

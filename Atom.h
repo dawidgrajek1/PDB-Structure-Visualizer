@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <glm/glm.hpp>
 class Atom
 {
 private:
@@ -19,7 +20,7 @@ private:
 	std::string element;
 	std::string charge;
 	float vdwRadius;
-	void setVdwRadius();
+	glm::vec4 position;
 
 public:
 	Atom();
@@ -53,6 +54,7 @@ public:
 	float getTempFactor();
 	std::string getElement();
 	std::string getCharge();
+	glm::vec4 getPosition();
 	float getVdwRadius();
 	void setSerial(int serial);
 	void setName(std::string name);
@@ -68,5 +70,7 @@ public:
 	void setTempFactor(float tempFactor);
 	void setElement(std::string element);
 	void setCharge(std::string charge);
+	void setVdwRadius();
+	void setPosition();
 };
 
