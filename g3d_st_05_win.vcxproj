@@ -43,12 +43,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="examples\example1.pdb" />
+    <None Include="examples\simple.pdb" />
     <None Include="f_constant.glsl" />
     <None Include="f_colored.glsl" />
     <None Include="f_lambert.glsl" />
+    <None Include="f_simplest.glsl" />
     <None Include="v_constant.glsl" />
     <None Include="v_colored.glsl" />
     <None Include="v_lambert.glsl" />
+    <None Include="v_simplest.glsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

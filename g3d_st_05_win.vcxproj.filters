@@ -97,5 +97,14 @@
     <None Include="examples\example1.pdb">
       <Filter>Pliki zasobów</Filter>
     </None>
+    <None Include="f_simplest.glsl">
+      <Filter>Pliki zasobów</Filter>
+    </None>
+    <None Include="v_simplest.glsl">
+      <Filter>Pliki zasobów</Filter>
+    </None>
+    <None Include="examples\simple.pdb">
+      <Filter>Pliki zasobów</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -156,6 +156,7 @@ void Atom::setVdwRadius()
 	vdwRadii["O"] = 1.52f;
 	vdwRadii["S"] = 1.80f;
 	vdwRadii["P"] = 1.80f;
+	vdwRadii["F"] = 1.47f;
 
 	if (vdwRadii.find(element) == vdwRadii.end())
 	{

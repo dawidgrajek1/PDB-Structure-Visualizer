@@ -39,6 +39,8 @@ std::vector<Atom> PDBParser::parsePDBFile(std::string pdbFile)
 				tmpAtom.setICode(line[26]);
 				tmpAtom.setOccupancy(std::stof(line.substr(54, 6)));
 				tmpAtom.setTempFactor(std::stof(line.substr(60, 6)));
+				tmpAtom.setElement(line.substr(76, 2));
+				tmpAtom.setCharge(line.substr(78, 2));
 				atoms.push_back(tmpAtom);
 			}
 			else if (line.substr(0, 3) == "TER")

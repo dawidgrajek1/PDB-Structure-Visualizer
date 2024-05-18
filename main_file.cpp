@@ -32,9 +32,13 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "shaderprogram.h"
 #include "sphere.h"
 #include "PDBParser.h"
+#include <iostream>
+#include <map>
 
 float speed_x = 0;
 float speed_y = 0;
+float speed_zoom = 0;
+float zoom = -10;
 float aspectRatio = 1;
 
 ShaderProgram* sp;
@@ -47,19 +51,22 @@ void error_callback(int error, const char* description) {
 	fputs(description, stderr);
 }
 
-
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	if (action == GLFW_PRESS) {
 		if (key == GLFW_KEY_LEFT) speed_x = -PI / 2;
 		if (key == GLFW_KEY_RIGHT) speed_x = PI / 2;
 		if (key == GLFW_KEY_UP) speed_y = PI / 2;
 		if (key == GLFW_KEY_DOWN) speed_y = -PI / 2;
+		if (key == GLFW_KEY_PAGE_UP) speed_zoom = 10;
+		if (key == GLFW_KEY_PAGE_DOWN) speed_zoom = -10;
 	}
 	if (action == GLFW_RELEASE) {
 		if (key == GLFW_KEY_LEFT) speed_x = 0;
 		if (key == GLFW_KEY_RIGHT) speed_x = 0;
 		if (key == GLFW_KEY_UP) speed_y = 0;
 		if (key == GLFW_KEY_DOWN) speed_y = 0;
+		if (key == GLFW_KEY_PAGE_UP) speed_zoom = 0;
+		if (key == GLFW_KEY_PAGE_DOWN) speed_zoom = 0;
 	}
 }
 
@@ -76,10 +83,14 @@ void initOpenGLProgram(GLFWwindow* window) {
 	glfwSetWindowSizeCallback(window, windowResizeCallback);
 	glfwSetKeyCallback(window, keyCallback);
 
-	sp = new ShaderProgram("v_lambert.glsl", NULL, "f_lambert.glsl");
-	sphere = new Models::Sphere(0.1f, 20, 20);
+	sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
+	sphere = new Models::Sphere(0.5f, 20, 20);
 	parser = new PDBParser();
-	atoms = parser->parsePDBFile("C:\\Users\\dawid\\Desktop\\PDB_Structure_Visualizer\\examples\\example1.pdb");
+	atoms = parser->parsePDBFile(".\\examples\\simple.pdb");
+	std::cout << "Atoms loaded: " << atoms.size() << std::endl;
+	/*for (int i = 0; i < atoms.size(); i++) {
+		std::cout << atoms[i].getSerial() << " " << atoms[i].getName() << " " << atoms[i].getResName() << " " << " " << atoms[i].getX() << " " << atoms[i].getY() << " " << atoms[i].getZ() << " _" << atoms[i].getElement() << "_" << std::endl;
+	}*/
 }
 
 
@@ -90,11 +101,47 @@ void freeOpenGLProgram(GLFWwindow* window) {
 	delete parser;
 }
 
-void drawAtom(Atom atom, bool drawForcesRadius) {
+glm::vec4 atomToColor(Atom atom) {
+	std::map<std::string, glm::vec4> atomColors = {
+		{" H", glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)},
+		{" C", glm::vec4(0.4f, 0.4f, 0.4f, 1.0f)},
+		{" N", glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)},
+		{" O", glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)},
+		{" F", glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)},
+		{" P", glm::vec4(1.0f, 0.5f, 0.0f, 1.0f)},
+		{" S", glm::vec4(1.0f, 1.0f, 0.0f, 1.0f)}
+	};
+
+	if (atomColors.find(atom.getElement()) == atomColors.end()) {
+		return glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+
+	return atomColors[atom.getElement()];
+}	
+
+void drawAtom(Atom atom, float angle_x, float angle_y, bool drawForcesRadius, bool drawHydrogens) {
+	if (!drawHydrogens && atom.getElement() == " H") {
+		return;
+	}
+
 	glm::mat4 M = glm::mat4(1.0f);
+	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
+	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::translate(M, glm::vec3(atom.getX(), atom.getY(), atom.getZ()));
 	// M = glm::scale(M, glm::vec3(atom.getVdwRadius()));
-	
+
+	glm::vec4 color = atomToColor(atom);
+
+	//std::cout << atom.getElement() << " " << color.x << " " << color.y << " " << color.z << " " << color.w << std::endl;
+
+	//Przeslij parametry programu cieniującego do karty graficznej
+	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+	glUniform4f(sp->u("color"), color.x, color.y, color.z, color.w);
+
+	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, sphere->vertices); //Wskaż tablicę z danymi dla atrybutu vertex
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, sphere->vertexNormals); //Wskaż tablicę z danymi dla atrybutu vertex
+
+	glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
 }
 
 
@@ -104,40 +151,36 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glm::mat4 V = glm::lookAt(
-		glm::vec3(0, 0, -5),
+		glm::vec3(0, 0, zoom),
 		glm::vec3(0, 0, 0),
 		glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz widoku
-
 	glm::mat4 P = glm::perspective(50.0f * PI / 180.0f, aspectRatio, 0.01f, 50.0f); //Wylicz macierz rzutowania
 
-	glm::mat4 M = glm::mat4(1.0f);
-	//M = glm::translate(M, glm::vec3(0.0f, 0.0f, -2.0f)); //Wylicz macierz modelu
-	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
-	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
+	//glm::mat4 M = glm::mat4(1.0f);
+	//M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
+	//M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
+
 	sp->use();//Aktywacja programu cieniującego
+	glm::vec4 lp = glm::vec4(0.0f, 0.0f, -30.0f, 1.0f); // pozycja źródła światła
 
 	//Przeslij parametry programu cieniującego do karty graficznej
 	glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
 	glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
-	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+	//glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 
 	// przekazanie pozycji źródła światła do shadera
-	glm::vec4 lp = glm::vec4(0.0f, 0.0f, -5.0f, 1.0f);
 	glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
 
 	glEnableVertexAttribArray(sp->a("vertex"));  //Włącz przesyłanie danych do atrybutu vertex
 	glEnableVertexAttribArray(sp->a("normal"));  //Włącz przesyłanie danych do atrybutu vertex
-	glEnableVertexAttribArray(sp->a("color"));  //Włącz przesyłanie danych do atrybutu vertex
 
-	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, sphere->vertices); //Wskaż tablicę z danymi dla atrybutu vertex
-	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, sphere->vertexNormals); //Wskaż tablicę z danymi dla atrybutu vertex
-	glVertexAttribPointer(sp->a("color"), 4, GL_FLOAT, false, 0, sphere->colors); //Wskaż tablicę z danymi dla atrybutu vertex
-	
-	glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
+	for (int i = 0; i < atoms.size(); i++) {
+		drawAtom(atoms[i], angle_x, angle_y, false, false);
+	}
 
 	glDisableVertexAttribArray(sp->a("vertex"));  //Wyłącz przesyłanie danych do atrybutu vertex
 	glDisableVertexAttribArray(sp->a("normal"));  //Wyłącz przesyłanie danych do atrybutu vertex
-	glDisableVertexAttribArray(sp->a("color"));  //Wyłącz przesyłanie danych do atrybutu vertex
+
 	glfwSwapBuffers(window); //Przerzuć tylny bufor na przedni
 }
 
@@ -180,6 +223,7 @@ int main(void)
 	{
 		angle_x += speed_x * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
 		angle_y += speed_y * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
+		zoom += speed_zoom * glfwGetTime();
 		glfwSetTime(0); //Zeruj timer
 		drawScene(window, angle_x, angle_y); //Wykonaj procedurę rysującą
 		glfwPollEvents(); //Wykonaj procedury callback w zalezności od zdarzeń jakie zaszły.
