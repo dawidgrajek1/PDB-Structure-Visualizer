@@ -150,12 +150,12 @@ void Atom::setCharge(std::string charge)
 void Atom::setVdwRadius()
 {
 	std::map<std::string, float> vdwRadii;
-	vdwRadii["H"] = 1.20;
-	vdwRadii["N"] = 1.55;
-	vdwRadii["C"] = 1.70;
-	vdwRadii["O"] = 1.52;
-	vdwRadii["S"] = 1.80;
-	vdwRadii["P"] = 1.80;
+	vdwRadii["H"] = 1.20f;
+	vdwRadii["N"] = 1.55f;
+	vdwRadii["C"] = 1.70f;
+	vdwRadii["O"] = 1.52f;
+	vdwRadii["S"] = 1.80f;
+	vdwRadii["P"] = 1.80f;
 
 	if (vdwRadii.find(element) == vdwRadii.end())
 	{
@@ -169,13 +169,28 @@ void Atom::setVdwRadius()
 
 Atom::Atom()
 {
+	this->serial = 0;
+	this->altLoc = ' ';
+	this->chainID = ' ';
+	this->resSeq = 0;
+	this->iCode = ' ';
+	this->x = 0.0;
+	this->y = 0.0;
+	this->z = 0.0;
+	this->occupancy = 0.0;
+	this->tempFactor = 0.0;
+	this->element = "";
+	this->charge = "";
+	this->vdwRadius = 0.0;
 }
 
 Atom::Atom(	int serial, std::string name, char altLoc, std::string resName, char chainID, int resSeq, char iCode,
 			float x, float y, float z, float occupancy, float tempFactor, std::string element, std::string charge)
 {
 	this->serial = serial;
+	this->name = name;
 	this->altLoc = altLoc;
+	this->resName = resName;
 	this->chainID = chainID;
 	this->resSeq = resSeq;
 	this->iCode = iCode;
@@ -184,6 +199,9 @@ Atom::Atom(	int serial, std::string name, char altLoc, std::string resName, char
 	this->z = z;
 	this->occupancy = occupancy;
 	this->tempFactor = tempFactor;
+	this->element = element;
+	this->charge = charge;
+	this->setVdwRadius();
 }
 
 Atom::~Atom()

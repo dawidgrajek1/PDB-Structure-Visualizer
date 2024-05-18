@@ -85,12 +85,6 @@
     <None Include="f_lambert.glsl">
       <Filter>Pliki zasobów</Filter>
     </None>
-    <None Include="f_lamberttextured.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
-    <None Include="f_textured.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
     <None Include="v_constant.glsl">
       <Filter>Pliki zasobów</Filter>
     </None>
@@ -100,10 +94,7 @@
     <None Include="v_lambert.glsl">
       <Filter>Pliki zasobów</Filter>
     </None>
-    <None Include="v_lamberttextured.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
-    <None Include="v_textured.glsl">
+    <None Include="examples\example1.pdb">
       <Filter>Pliki zasobów</Filter>
     </None>
   </ItemGroup>
