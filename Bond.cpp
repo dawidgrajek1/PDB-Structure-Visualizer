@@ -14,7 +14,7 @@ Bond::Bond(glm::vec4 start, glm::vec4 end)
 	this->start = start;
 	this->end = end;
 	this->length = glm::distance(start, end);
-	this->direction = glm::normalize(end - start);
+	this->direction = glm::normalize(start - end);
 	this->center = (start + end) / 2.0f;
 }
 

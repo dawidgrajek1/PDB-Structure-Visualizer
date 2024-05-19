@@ -31,6 +31,7 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 #include "lodepng.h"
 #include "shaderprogram.h"
 #include "sphere.h"
+#include "cube.h"
 #include "PDBParser.h"
 #include <iostream>
 #include <map>
@@ -44,7 +45,7 @@ float aspectRatio = 1;
 
 ShaderProgram* sp;
 Models::Sphere* sphere;
-Models::Sphere* stick;
+Models::Cube* stick;
 PDBParser* parser;
 std::vector<Atom> atoms;
 std::vector<Bond> bonds;
@@ -79,14 +80,21 @@ void windowResizeCallback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
-std::vector<Bond> calculateBonds(std::vector<Atom> atoms) {
+std::vector<Bond> calculateBonds(std::vector<Atom> atoms, bool includeHydrogens) {
 	std::vector<Bond> bonds;
 	for (int i = 0; i < atoms.size(); i++) {
+		if (!includeHydrogens && atoms[i].getElement() == " H") {
+			continue;
+		}
 		for (int j = i + 1; j < atoms.size(); j++) {
+			if (!includeHydrogens && atoms[j].getElement() == " H") {
+				continue;
+			}
 			glm::vec4 atom1 = glm::vec4(atoms[i].getX(), atoms[i].getY(), atoms[i].getZ(), 1.0f);
 			glm::vec4 atom2 = glm::vec4(atoms[j].getX(), atoms[j].getY(), atoms[j].getZ(), 1.0f);
 			float distance = glm::distance(atom1, atom2);
-			if (distance < atoms[i].getVdwRadius() + atoms[j].getVdwRadius()) {
+			if (2 * distance < atoms[i].getVdwRadius() + atoms[j].getVdwRadius()) {
+				std::cout << "Bond: " << atoms[i].getSerial() << " " << atoms[j].getSerial() << std::endl;
 				bonds.push_back(Bond(glm::vec4(atoms[i].getX(), atoms[i].getY(), atoms[i].getZ(), 1.0f), glm::vec4(atoms[j].getX(), atoms[j].getY(), atoms[j].getZ(), 1.0f)));
 			}
 		}
@@ -103,11 +111,11 @@ void initOpenGLProgram(GLFWwindow* window) {
 
 	sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
 	sphere = new Models::Sphere(0.4f, 20, 20);
-	stick = new Models::Sphere(0.1f, 20, 20);
+	stick = new Models::Cube();
 	parser = new PDBParser();
 	atoms = parser->parsePDBFile(".\\examples\\simple.pdb");
 	std::cout << "Atoms loaded: " << atoms.size() << std::endl;
-	bonds = calculateBonds(atoms);
+	bonds = calculateBonds(atoms, false);
 	std::cout << "Bonds calculated: " << bonds.size() << std::endl;
 	/*for (int i = 0; i < atoms.size(); i++) {
 		std::cout << atoms[i].getSerial() << " " << atoms[i].getName() << " " << atoms[i].getResName() << " " << " " << atoms[i].getX() << " " << atoms[i].getY() << " " << atoms[i].getZ() << " _" << atoms[i].getElement() << "_" << std::endl;
@@ -168,10 +176,16 @@ void drawAtom(Atom atom, float angle_x, float angle_y, bool drawForcesRadius, bo
 
 void drawBond(Bond bond, float angle_x, float angle_y) {
 	glm::mat4 M = glm::mat4(1.0f);
+	// draw a stick between two points
 	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
-	M = glm::scale(M, bond.getDirection().xyz * bond.getLength());
-	M = glm::translate(M, glm::vec3(bond.getCenter().x, bond.getCenter().y, bond.getCenter().z));
+	M = glm::translate(M, glm::vec3(bond.getCenter().xyz));
+	M = glm::rotate(M, atan2(bond.getDirection().y, bond.getDirection().x), glm::vec3(0.0f, 0.0f, 1.0f));
+	M = glm::rotate(M, acos(bond.getDirection().z), glm::vec3(0.0f, 1.0f, 0.0f));
+	M = glm::scale(M, glm::vec3(0.01f, 0.01f, bond.getLength()*0.5f));
+
+
+	//M = glm::scale(M, bond.getDirection().xyz * bond.getLength());
 
 	glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -180,7 +194,7 @@ void drawBond(Bond bond, float angle_x, float angle_y) {
 	glUniform4f(sp->u("color"), color.x, color.y, color.z, color.w);
 
 	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, stick->vertices); //Wskaż tablicę z danymi dla atrybutu vertex
-	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, stick->vertexNormals); //Wskaż tablicę z danymi dla atrybutu vertex
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, stick->normals); //Wskaż tablicę z danymi dla atrybutu vertex
 
 	glDrawArrays(GL_TRIANGLES, 0, stick->vertexCount); //Narysuj obiekt
 }
@@ -202,7 +216,7 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	//M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
 
 	sp->use();//Aktywacja programu cieniującego
-	glm::vec4 lp = glm::vec4(0.0f, 0.0f, -30.0f, 1.0f); // pozycja źródła światła
+	glm::vec4 lp = glm::vec4(0.0f, 0.0f, zoom, 1.0f); // pozycja źródła światła
 
 	//Przeslij parametry programu cieniującego do karty graficznej
 	glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
@@ -222,7 +236,7 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 	//Rysowanie wiązań
 	for (int i = 0; i < bonds.size(); i++)
 	{
-		std::cout << bonds[i].getStart().x << " " << bonds[i].getLength() << std::endl;
+		//std::cout << bonds[i].getStart().x << " " << bonds[i].getLength() << std::endl;
 		drawBond(bonds[i], angle_x, angle_y);
 	}
 

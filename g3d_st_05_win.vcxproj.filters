@@ -21,6 +21,9 @@
     <ClInclude Include="constants.h">
       <Filter>Pliki naglówkowe</Filter>
     </ClInclude>
+    <ClInclude Include="cube.h">
+      <Filter>Pliki naglówkowe</Filter>
+    </ClInclude>
     <ClInclude Include="lodepng.h">
       <Filter>Pliki naglówkowe</Filter>
     </ClInclude>
@@ -33,16 +36,22 @@
     <ClInclude Include="teapot.h">
       <Filter>Pliki naglówkowe</Filter>
     </ClInclude>
+    <ClInclude Include="torus.h">
+      <Filter>Pliki naglówkowe</Filter>
+    </ClInclude>
     <ClInclude Include="shaderprogram.h">
       <Filter>Pliki naglówkowe</Filter>
     </ClInclude>
-    <ClInclude Include="PDBParser.h">
+    <ClInclude Include="myCube.h">
       <Filter>Pliki naglówkowe</Filter>
     </ClInclude>
     <ClInclude Include="Atom.h">
       <Filter>Pliki naglówkowe</Filter>
     </ClInclude>
     <ClInclude Include="Bond.h">
+      <Filter>Pliki naglówkowe</Filter>
+    </ClInclude>
+    <ClInclude Include="PDBParser.h">
       <Filter>Pliki naglówkowe</Filter>
     </ClInclude>
   </ItemGroup>
@@ -71,45 +80,27 @@
     <ClCompile Include="torus.cpp">
       <Filter>Pliki zródlowe</Filter>
     </ClCompile>
-    <ClCompile Include="PDBParser.cpp">
-      <Filter>Pliki zródlowe</Filter>
-    </ClCompile>
     <ClCompile Include="Atom.cpp">
       <Filter>Pliki zródlowe</Filter>
     </ClCompile>
     <ClCompile Include="Bond.cpp">
       <Filter>Pliki zródlowe</Filter>
     </ClCompile>
+    <ClCompile Include="PDBParser.cpp">
+      <Filter>Pliki zródlowe</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="f_constant.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
     <None Include="f_colored.glsl">
       <Filter>Pliki zasobów</Filter>
     </None>
-    <None Include="f_lambert.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
-    <None Include="v_constant.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
     <None Include="v_colored.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
-    <None Include="v_lambert.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
-    <None Include="examples\example1.pdb">
       <Filter>Pliki zasobów</Filter>
     </None>
     <None Include="f_simplest.glsl">
       <Filter>Pliki zasobów</Filter>
     </None>
     <None Include="v_simplest.glsl">
-      <Filter>Pliki zasobów</Filter>
-    </None>
-    <None Include="examples\simple.pdb">
       <Filter>Pliki zasobów</Filter>
     </None>
   </ItemGroup>

@@ -23,12 +23,15 @@
     <ClInclude Include="Atom.h" />
     <ClInclude Include="Bond.h" />
     <ClInclude Include="constants.h" />
+    <ClInclude Include="cube.h" />
     <ClInclude Include="lodepng.h" />
     <ClInclude Include="model.h" />
+    <ClInclude Include="myCube.h" />
     <ClInclude Include="PDBParser.h" />
     <ClInclude Include="shaderprogram.h" />
     <ClInclude Include="sphere.h" />
     <ClInclude Include="teapot.h" />
+    <ClInclude Include="torus.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Atom.cpp" />
@@ -44,15 +47,9 @@
     <ClCompile Include="torus.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="examples\example1.pdb" />
-    <None Include="examples\simple.pdb" />
-    <None Include="f_constant.glsl" />
     <None Include="f_colored.glsl" />
-    <None Include="f_lambert.glsl" />
     <None Include="f_simplest.glsl" />
-    <None Include="v_constant.glsl" />
     <None Include="v_colored.glsl" />
-    <None Include="v_lambert.glsl" />
     <None Include="v_simplest.glsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -61,7 +58,6 @@
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>g3dst05win</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>PDB_structure_visualizer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

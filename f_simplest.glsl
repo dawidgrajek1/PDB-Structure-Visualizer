@@ -33,10 +33,10 @@ void main(void) {
     vec4 Ks = vec4(1, 1, 1, 1);
 
     // kolor piksela
-    // L = colorF * La + colorF * Ld * nl;
+    vec4 L = colorF * La + colorF * Ld * nl;
 
     // kolor piksela z odbiciem
-    vec4 L = colorF * La + colorF * Ld * nl + Ks * Ls * rv;
+    // vec4 L = colorF * La + colorF * Ld * nl + Ks * Ls * rv;
 
 	pixelColor=L;
 }
