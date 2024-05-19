@@ -40,8 +40,22 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 float speed_x = 0;
 float speed_y = 0;
 float speed_zoom = 0;
-float zoom = -10;
+float zoom = -70;
 float aspectRatio = 1;
+float fov = 75.0f;
+
+// move the model
+float move_speed_x = 0;
+float move_speed_y = 0;
+float move_speed_z = 0;
+float offset_x = 0;
+float offset_y = 0;
+float offset_z = 0;
+
+// options
+bool drawForcesRadius = false;
+bool drawHydrogens = false;
+bool drawBonds = true;
 
 ShaderProgram* sp;
 Models::Sphere* sphere;
@@ -49,6 +63,7 @@ Models::Cube* stick;
 PDBParser* parser;
 std::vector<Atom> atoms;
 std::vector<Bond> bonds;
+glm::vec4 moleculeCenter;
 
 //Procedura obsługi błędów
 void error_callback(int error, const char* description) {
@@ -63,6 +78,15 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		if (key == GLFW_KEY_DOWN) speed_y = -PI / 2;
 		if (key == GLFW_KEY_PAGE_UP) speed_zoom = 10;
 		if (key == GLFW_KEY_PAGE_DOWN) speed_zoom = -10;
+		if (key == GLFW_KEY_W) move_speed_y = 40;
+		if (key == GLFW_KEY_S) move_speed_y = -40;
+		if (key == GLFW_KEY_A) move_speed_x = 40;
+		if (key == GLFW_KEY_D) move_speed_x = -40;
+		if (key == GLFW_KEY_Q) move_speed_z = 40;
+		if (key == GLFW_KEY_E) move_speed_z = -40;
+		if (key == GLFW_KEY_F1) drawForcesRadius = !drawForcesRadius;
+		if (key == GLFW_KEY_F2) drawHydrogens = !drawHydrogens;
+		if (key == GLFW_KEY_F3) drawBonds = !drawBonds;
 	}
 	if (action == GLFW_RELEASE) {
 		if (key == GLFW_KEY_LEFT) speed_x = 0;
@@ -71,6 +95,12 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		if (key == GLFW_KEY_DOWN) speed_y = 0;
 		if (key == GLFW_KEY_PAGE_UP) speed_zoom = 0;
 		if (key == GLFW_KEY_PAGE_DOWN) speed_zoom = 0;
+		if (key == GLFW_KEY_W) move_speed_y = 0;
+		if (key == GLFW_KEY_S) move_speed_y = 0;
+		if (key == GLFW_KEY_A) move_speed_x = 0;
+		if (key == GLFW_KEY_D) move_speed_x = 0;
+		if (key == GLFW_KEY_Q) move_speed_z = 0;
+		if (key == GLFW_KEY_E) move_speed_z = 0;
 	}
 }
 
@@ -94,7 +124,7 @@ std::vector<Bond> calculateBonds(std::vector<Atom> atoms, bool includeHydrogens)
 			glm::vec4 atom2 = glm::vec4(atoms[j].getX(), atoms[j].getY(), atoms[j].getZ(), 1.0f);
 			float distance = glm::distance(atom1, atom2);
 			if (2 * distance < atoms[i].getVdwRadius() + atoms[j].getVdwRadius()) {
-				std::cout << "Bond: " << atoms[i].getSerial() << " " << atoms[j].getSerial() << std::endl;
+				//std::cout << "Bond: " << atoms[i].getSerial() << " " << atoms[j].getSerial() << std::endl;
 				bonds.push_back(Bond(glm::vec4(atoms[i].getX(), atoms[i].getY(), atoms[i].getZ(), 1.0f), glm::vec4(atoms[j].getX(), atoms[j].getY(), atoms[j].getZ(), 1.0f)));
 			}
 		}
@@ -102,21 +132,36 @@ std::vector<Bond> calculateBonds(std::vector<Atom> atoms, bool includeHydrogens)
 	return bonds;
 }
 
+glm::vec4 centerOfMass(std::vector<Atom> atoms) {
+	glm::vec4 center = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	for (int i = 0; i < atoms.size(); i++) {
+		center = glm::vec4(center.x + atoms[i].getX(), center.y + atoms[i].getY(), center.z + atoms[i].getZ(), center.w + 1.0f);
+	}
+
+	center /= atoms.size();
+	return center;
+}
+
 //Procedura inicjująca
 void initOpenGLProgram(GLFWwindow* window) {
 	glClearColor(0, 0, 0, 1);
 	glEnable(GL_DEPTH_TEST);
+	/*glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);*/
 	glfwSetWindowSizeCallback(window, windowResizeCallback);
 	glfwSetKeyCallback(window, keyCallback);
 
 	sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
-	sphere = new Models::Sphere(0.4f, 20, 20);
+	sphere = new Models::Sphere(0.4f, 15, 15);
 	stick = new Models::Cube();
 	parser = new PDBParser();
-	atoms = parser->parsePDBFile(".\\examples\\simple.pdb");
+	atoms = parser->parsePDBFile(".\\examples\\example1.pdb");
 	std::cout << "Atoms loaded: " << atoms.size() << std::endl;
 	bonds = calculateBonds(atoms, false);
 	std::cout << "Bonds calculated: " << bonds.size() << std::endl;
+	moleculeCenter = centerOfMass(atoms);
+	std::cout << "Center of mass: " << moleculeCenter.x << " " << moleculeCenter.y << " " << moleculeCenter.z << std::endl;
+
 	/*for (int i = 0; i < atoms.size(); i++) {
 		std::cout << atoms[i].getSerial() << " " << atoms[i].getName() << " " << atoms[i].getResName() << " " << " " << atoms[i].getX() << " " << atoms[i].getY() << " " << atoms[i].getZ() << " _" << atoms[i].getElement() << "_" << std::endl;
 	}*/
@@ -128,6 +173,7 @@ void initOpenGLProgram(GLFWwindow* window) {
 void freeOpenGLProgram(GLFWwindow* window) {
 	delete sp;
 	delete sphere;
+	delete stick;
 	delete parser;
 }
 
@@ -158,7 +204,7 @@ void drawAtom(Atom atom, float angle_x, float angle_y, bool drawForcesRadius, bo
 	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::translate(M, glm::vec3(atom.getX(), atom.getY(), atom.getZ()));
-	// M = glm::scale(M, glm::vec3(atom.getVdwRadius()));
+	M = glm::translate(M, glm::vec3(offset_x, offset_y, offset_z));
 
 	glm::vec4 color = atomToColor(atom);
 
@@ -166,12 +212,20 @@ void drawAtom(Atom atom, float angle_x, float angle_y, bool drawForcesRadius, bo
 
 	//Przeslij parametry programu cieniującego do karty graficznej
 	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
-	glUniform4f(sp->u("color"), color.x, color.y, color.z, color.w);
+	glUniform4f(sp->u("color"), color.r, color.g, color.b, color.a);
 
 	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, sphere->vertices); //Wskaż tablicę z danymi dla atrybutu vertex
 	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, sphere->vertexNormals); //Wskaż tablicę z danymi dla atrybutu vertex
 
 	glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
+
+	if (drawForcesRadius) {
+		M = glm::scale(M, glm::vec3(atom.getVdwRadius() * 2.5f, atom.getVdwRadius() * 2.5f, atom.getVdwRadius() * 2.5f)); // mnozenie 2.5f bo model sfery ma 0.4f
+		glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+		color.a = 0.05f;
+		glUniform4f(sp->u("color"), color.r, color.g, color.b, color.a);
+		glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
+	}
 }
 
 void drawBond(Bond bond, float angle_x, float angle_y) {
@@ -180,13 +234,11 @@ void drawBond(Bond bond, float angle_x, float angle_y) {
 	M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
 	M = glm::translate(M, glm::vec3(bond.getCenter().xyz));
+	M = glm::translate(M, glm::vec3(offset_x, offset_y, offset_z));
 	M = glm::rotate(M, atan2(bond.getDirection().y, bond.getDirection().x), glm::vec3(0.0f, 0.0f, 1.0f));
 	M = glm::rotate(M, acos(bond.getDirection().z), glm::vec3(0.0f, 1.0f, 0.0f));
 	M = glm::scale(M, glm::vec3(0.01f, 0.01f, bond.getLength()*0.5f));
-
-
-	//M = glm::scale(M, bond.getDirection().xyz * bond.getLength());
-
+	
 	glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	//Przeslij parametry programu cieniującego do karty graficznej
@@ -202,46 +254,45 @@ void drawBond(Bond bond, float angle_x, float angle_y) {
 
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
-	//************Tutaj umieszczaj kod rysujący obraz******************l
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); //Wyczyść bufor koloru i bufor głębokości
 
 	glm::mat4 V = glm::lookAt(
-		glm::vec3(0, 0, zoom),
-		glm::vec3(0, 0, 0),
-		glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz widoku
-	glm::mat4 P = glm::perspective(75.0f * PI / 180.0f, aspectRatio, 0.01f, 100.0f); //Wylicz macierz rzutowania
-
-	//glm::mat4 M = glm::mat4(1.0f);
-	//M = glm::rotate(M, angle_y, glm::vec3(1.0f, 0.0f, 0.0f)); //Wylicz macierz modelu
-	//M = glm::rotate(M, angle_x, glm::vec3(0.0f, 1.0f, 0.0f)); //Wylicz macierz modelu
+		glm::vec3(0, 0, zoom), // Punkt obserwatora
+		glm::vec3(moleculeCenter.xyz), // Punkt na który patrzymy
+		glm::vec3(0.0f, 1.0f, 0.0f)); // Kierunek "góry" kamery
+	glm::mat4 P = glm::perspective(fov * PI / 180.0f, aspectRatio, 0.01f, 100.0f); //Wylicz macierz rzutowania
 
 	sp->use();//Aktywacja programu cieniującego
-	glm::vec4 lp = glm::vec4(0.0f, 0.0f, zoom, 1.0f); // pozycja źródła światła
+	
+	// set light position to camera position
+	glm::vec4 lp = glm::vec4(0, 0, zoom, 1.0f);
 
 	//Przeslij parametry programu cieniującego do karty graficznej
 	glUniformMatrix4fv(sp->u("P"), 1, false, glm::value_ptr(P));
 	glUniformMatrix4fv(sp->u("V"), 1, false, glm::value_ptr(V));
-	//glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 
 	// przekazanie pozycji źródła światła do shadera
 	glUniform4fv(sp->u("lp"), 1, glm::value_ptr(lp));
 
 	glEnableVertexAttribArray(sp->a("vertex"));  //Włącz przesyłanie danych do atrybutu vertex
-	glEnableVertexAttribArray(sp->a("normal"));  //Włącz przesyłanie danych do atrybutu vertex
+	glEnableVertexAttribArray(sp->a("normal"));  //Włącz przesyłanie danych do atrybutu normal
 
+	// Rysowanie atomów
 	for (int i = 0; i < atoms.size(); i++) {
-		drawAtom(atoms[i], angle_x, angle_y, false, false);
+		drawAtom(atoms[i], angle_x, angle_y, drawForcesRadius, drawHydrogens);
 	}
 
-	//Rysowanie wiązań
-	for (int i = 0; i < bonds.size(); i++)
-	{
-		//std::cout << bonds[i].getStart().x << " " << bonds[i].getLength() << std::endl;
-		drawBond(bonds[i], angle_x, angle_y);
+	// Rysowanie wiązań
+	if (drawBonds) {
+		for (int i = 0; i < bonds.size(); i++)
+		{
+			//std::cout << bonds[i].getStart().x << " " << bonds[i].getLength() << std::endl;
+			drawBond(bonds[i], angle_x, angle_y);
+		}
 	}
 
 	glDisableVertexAttribArray(sp->a("vertex"));  //Wyłącz przesyłanie danych do atrybutu vertex
-	glDisableVertexAttribArray(sp->a("normal"));  //Wyłącz przesyłanie danych do atrybutu vertex
+	glDisableVertexAttribArray(sp->a("normal"));  //Wyłącz przesyłanie danych do atrybutu normal
 
 	glfwSwapBuffers(window); //Przerzuć tylny bufor na przedni
 }
@@ -286,6 +337,11 @@ int main(void)
 		angle_x += speed_x * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
 		angle_y += speed_y * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
 		zoom += speed_zoom * glfwGetTime();
+		offset_x += move_speed_x * glfwGetTime();
+		offset_y += move_speed_y * glfwGetTime();
+		offset_z += move_speed_z * glfwGetTime();
+
+
 		glfwSetTime(0); //Zeruj timer
 		drawScene(window, angle_x, angle_y); //Wykonaj procedurę rysującą
 		glfwPollEvents(); //Wykonaj procedury callback w zalezności od zdarzeń jakie zaszły.
