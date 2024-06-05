@@ -40,9 +40,10 @@ Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 float speed_x = 0;
 float speed_y = 0;
 float speed_zoom = 0;
-float zoom = -70;
+float zoom = -40;
 float aspectRatio = 1;
 float fov = 75.0f;
+float opacity = 1.0f;
 
 // move the model
 float move_speed_x = 0;
@@ -59,11 +60,13 @@ bool drawBonds = true;
 
 ShaderProgram* sp;
 Models::Sphere* sphere;
+Models::Cube* cube;
 Models::Cube* stick;
 PDBParser* parser;
 std::vector<Atom> atoms;
 std::vector<Bond> bonds;
 glm::vec4 moleculeCenter;
+
 
 //Procedura obsługi błędów
 void error_callback(int error, const char* description) {
@@ -87,6 +90,8 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		if (key == GLFW_KEY_F1) drawForcesRadius = !drawForcesRadius;
 		if (key == GLFW_KEY_F2) drawHydrogens = !drawHydrogens;
 		if (key == GLFW_KEY_F3) drawBonds = !drawBonds;
+		if (key == GLFW_KEY_P) if (opacity >= 1.0f) opacity = 0.1f; else opacity += 0.1f;
+		if (key == GLFW_KEY_O) if (opacity <= 0.1f) opacity = 1.0f; else opacity -= 0.1f;
 	}
 	if (action == GLFW_RELEASE) {
 		if (key == GLFW_KEY_LEFT) speed_x = 0;
@@ -146,14 +151,15 @@ glm::vec4 centerOfMass(std::vector<Atom> atoms) {
 void initOpenGLProgram(GLFWwindow* window) {
 	glClearColor(0, 0, 0, 1);
 	glEnable(GL_DEPTH_TEST);
-	/*glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_BLEND);*/
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
 	glfwSetWindowSizeCallback(window, windowResizeCallback);
 	glfwSetKeyCallback(window, keyCallback);
 
 	sp = new ShaderProgram("v_simplest.glsl", NULL, "f_simplest.glsl");
 	sphere = new Models::Sphere(0.4f, 15, 15);
 	stick = new Models::Cube();
+	cube = new Models::Cube();
 	parser = new PDBParser();
 	atoms = parser->parsePDBFile(".\\examples\\example1.pdb");
 	std::cout << "Atoms loaded: " << atoms.size() << std::endl;
@@ -209,21 +215,22 @@ void drawAtom(Atom atom, float angle_x, float angle_y, bool drawForcesRadius, bo
 	glm::vec4 color = atomToColor(atom);
 
 	//std::cout << atom.getElement() << " " << color.x << " " << color.y << " " << color.z << " " << color.w << std::endl;
-
-	//Przeslij parametry programu cieniującego do karty graficznej
 	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
 	glUniform4f(sp->u("color"), color.r, color.g, color.b, color.a);
 
 	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, sphere->vertices); //Wskaż tablicę z danymi dla atrybutu vertex
 	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, sphere->vertexNormals); //Wskaż tablicę z danymi dla atrybutu vertex
 
-	glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
+	if (!drawForcesRadius)
+	{
+		//Przeslij parametry programu cieniującego do karty graficznej
+		glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
+	}
 
 	if (drawForcesRadius) {
 		M = glm::scale(M, glm::vec3(atom.getVdwRadius() * 2.5f, atom.getVdwRadius() * 2.5f, atom.getVdwRadius() * 2.5f)); // mnozenie 2.5f bo model sfery ma 0.4f
 		glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
-		color.a = 0.05f;
-		glUniform4f(sp->u("color"), color.r, color.g, color.b, color.a);
+		glUniform4f(sp->u("color"), color.r, color.g, color.b, opacity);
 		glDrawArrays(GL_TRIANGLES, 0, sphere->vertexCount); //Narysuj obiekt
 	}
 }
@@ -251,6 +258,24 @@ void drawBond(Bond bond, float angle_x, float angle_y) {
 	glDrawArrays(GL_TRIANGLES, 0, stick->vertexCount); //Narysuj obiekt
 }
 
+void drawBackground() {
+	glm::mat4 M = glm::mat4(1.0f);
+
+	M = glm::translate(M, glm::vec3(0.0f, 0.0f, 40.0f));
+	M = glm::scale(M, glm::vec3(100.0f, 100.0f, 0.1f));
+
+	glm::vec4 color = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+
+	//Przeslij parametry programu cieniującego do karty graficznej
+	glUniformMatrix4fv(sp->u("M"), 1, false, glm::value_ptr(M));
+	glUniform4f(sp->u("color"), color.x, color.y, color.z, color.w);
+
+	glVertexAttribPointer(sp->a("vertex"), 4, GL_FLOAT, false, 0, cube->vertices); //Wskaż tablicę z danymi dla atrybutu vertex
+	glVertexAttribPointer(sp->a("normal"), 4, GL_FLOAT, false, 0, cube->normals); //Wskaż tablicę z danymi dla atrybutu vertex
+
+	glDrawArrays(GL_TRIANGLES, 0, cube->vertexCount); //Narysuj obiekt
+}
+
 
 //Procedura rysująca zawartość sceny
 void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
@@ -258,7 +283,7 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 
 	glm::mat4 V = glm::lookAt(
 		glm::vec3(0, 0, zoom), // Punkt obserwatora
-		glm::vec3(moleculeCenter.xyz), // Punkt na który patrzymy
+		glm::vec3(0.0f, 0.0f, 0.0f), // Punkt na który patrzymy
 		glm::vec3(0.0f, 1.0f, 0.0f)); // Kierunek "góry" kamery
 	glm::mat4 P = glm::perspective(fov * PI / 180.0f, aspectRatio, 0.01f, 100.0f); //Wylicz macierz rzutowania
 
@@ -276,6 +301,9 @@ void drawScene(GLFWwindow* window, float angle_x, float angle_y) {
 
 	glEnableVertexAttribArray(sp->a("vertex"));  //Włącz przesyłanie danych do atrybutu vertex
 	glEnableVertexAttribArray(sp->a("normal"));  //Włącz przesyłanie danych do atrybutu normal
+
+	// rysowanie tla
+	drawBackground();
 
 	// Rysowanie atomów
 	for (int i = 0; i < atoms.size(); i++) {
@@ -308,6 +336,8 @@ int main(void)
 		fprintf(stderr, "Nie można zainicjować GLFW.\n");
 		exit(EXIT_FAILURE);
 	}
+
+
 
 	window = glfwCreateWindow(800, 800, "PDB Structure Visualizer", NULL, NULL);  //Utwórz okno 500x500 o tytule "OpenGL" i kontekst OpenGL.
 
