@@ -58,6 +58,10 @@ bool drawForcesRadius = false;
 bool drawHydrogens = false;
 bool drawBonds = true;
 
+//fps counter
+double total_time = 0.0f;
+int nbFrames = 0;
+
 ShaderProgram* sp;
 Models::Sphere* sphere;
 Models::Cube* cube;
@@ -364,6 +368,16 @@ int main(void)
 	glfwSetTime(0); //Zeruj timer
 	while (!glfwWindowShouldClose(window)) //Tak długo jak okno nie powinno zostać zamknięte
 	{
+		// Measure speed
+		total_time += glfwGetTime();
+		nbFrames++;
+		// fps
+		if (total_time >= 1.0) {
+			std::cout << "FPS: " << nbFrames << std::endl;
+			total_time = 0.0;
+			nbFrames = 0;
+		}
+
 		angle_x += speed_x * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
 		angle_y += speed_y * glfwGetTime(); //Zwiększ/zmniejsz kąt obrotu na podstawie prędkości i czasu jaki upłynał od poprzedniej klatki
 		zoom += speed_zoom * glfwGetTime();
