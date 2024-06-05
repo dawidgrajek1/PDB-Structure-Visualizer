@@ -17,6 +17,9 @@ jeśli nie - napisz do Free Software Foundation, Inc., 59 Temple
 Place, Fifth Floor, Boston, MA  02110 - 1301  USA
 */
 
+// Dawid Grajek
+// dawid.grajek@student.put.poznan.pl
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_SWIZZLE
 
